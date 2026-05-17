@@ -1,27 +1,40 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "main": "index.js",
+  "description": "API do Sistema de Gerenciamento de Planos de Aula",
+  "main": "src/index.js",
+  "type": "commonjs",
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "test": "jest"
+    "test": "jest --runInBand",
+    "test:watch": "jest --watch",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "keywords": [],
-  "author": "",
+  "author": "Daniel Ramos Mendonca",
   "license": "ISC",
-  "description": "",
   "dependencies": {
     "axios": "^1.16.1",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "pg": "^8.20.0"
+    "pg": "^8.20.0",
+    "pino": "^9.5.0",
+    "pino-http": "^10.3.0",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.0",
     "eslint": "^10.4.0",
+    "eslint-config-prettier": "^9.1.0",
+    "globals": "^15.14.0",
     "jest": "^30.4.2",
     "nodemon": "^3.1.14",
+    "pino-pretty": "^11.3.0",
     "prettier": "^3.8.3",
     "supertest": "^7.2.2"
   }
