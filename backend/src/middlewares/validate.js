@@ -8,7 +8,16 @@ function validate(schemas) {
   return (req, _res, next) => {
     try {
       if (schemas.body) req.body = schemas.body.parse(req.body);
-      if (schemas.query) req.query = schemas.query.parse(req.query);
+      if (schemas.query) {
+        const parsed = schemas.query.parse(req.query);
+        // req.query e getter no prototype do Express 5; Object.defineProperty cria propriedade propria
+        Object.defineProperty(req, 'query', {
+          value: parsed,
+          configurable: true,
+          writable: true,
+          enumerable: true,
+        });
+      }
       if (schemas.params) req.params = schemas.params.parse(req.params);
       next();
     } catch (err) {
