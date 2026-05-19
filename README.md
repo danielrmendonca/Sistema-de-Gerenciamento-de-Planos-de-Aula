@@ -4,7 +4,7 @@ Plataforma para cadastro, organização e consulta de planos de aula, com integr
 
 ## Stack
 - **Frontend:** TypeScript, Vite, React, Tailwind CSS v3, React Router, React Hook Form, Zod, TanStack Query, Axios.
-- **Backend:** JavaScript, Node.js, Express, Zod, Pino, Axios, pg (conexão com o banco).
+- **Backend:** JavaScript (CommonJS - `require`/`module.exports`), Node.js, Express, Zod, Pino, Axios, pg (conexão com o banco).
 - **Banco:** PostgreSQL.
 - **Testes:** Jest, Supertest.
 - **IA:** Google AI Studio (Gemini).
@@ -122,6 +122,32 @@ cd frontend && npm run dev
 | PUT    | `/api/lesson-plans/:id`    | Atualiza um plano                        |
 | DELETE | `/api/lesson-plans/:id`    | Remove um plano                          |
 | POST   | `/api/ai/smart-assist`     | Gera recomendações via Gemini            |
+
+## Arquitetura do backend
+
+O backend segue uma arquitetura em camadas onde cada arquivo tem uma responsabilidade única. O fluxo de uma requisição passa por todas elas em sequência:
+
+```
+Requisição HTTP -> Rota -> Middleware (validate) -> Controller -> Service -> Repository -> Banco
+```
+
+**Rotas** (`src/routes/`)
+Conectam método HTTP + caminho a uma função do controller. Também encadeiam o middleware de validação antes do controller, garantindo que dados inválidos sejam rejeitados antes de qualquer lógica de negócio.
+
+```js
+router.get('/:id', validate({ params: idParamsSchema }), controller.getById);
+```
+
+**Controller** (`src/controllers/`)
+Recebe `req` e `res`, extrai os dados da requisição, delega ao service e devolve a resposta HTTP. Não conhece SQL e não aplica regras de negócio.
+
+**Service** (`src/services/`)
+Aplica as regras de negócio. Verifica, por exemplo, se um recurso existe antes de retorná-lo, lançando erro 404 quando o repositório devolve `null`. Não conhece `req` nem `res`.
+
+**Repository** (`src/repositories/`)
+Unica camada que fala com o banco. Executa as queries SQL e devolve objetos simples. Converte snake_case do PostgreSQL para camelCase antes de retornar.
+
+Essa separação permite testar cada camada de forma isolada - os testes de integração mockam apenas o repositório, sem precisar de um banco real.
 
 ## Integração Contínua (CI)
 Workflow do GitHub Actions em `.github/workflows/lint.yml` que roda ESLint e Prettier nos pacotes `backend` e `frontend` a cada `push` (qualquer branch) e em `pull_request` para `main`.
