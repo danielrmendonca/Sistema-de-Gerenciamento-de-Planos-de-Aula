@@ -26,10 +26,14 @@ export type LessonPlanFilters = {
   sortOrder?: 'asc' | 'desc';
 };
 
+// O backend retorna os metadados de paginacao em um objeto aninhado,
+// entao mantemos o mesmo formato aqui para consumir a resposta sem transformacao intermediaria
 export type Paginated<T> = {
   data: T[];
-  page: number;
-  pageSize: number;
-  total: number;
-  totalPages: number;
+  pagination: {
+    total: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+  };
 };
