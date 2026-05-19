@@ -1,12 +1,12 @@
-// ----------INPUT BASE----------
-import { forwardRef, type InputHTMLAttributes } from 'react';
+// ----------TEXTAREA BASE----------
+import { forwardRef, type TextareaHTMLAttributes } from 'react';
 
-type InputProps = InputHTMLAttributes<HTMLInputElement> & {
+type TextareaProps = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   label?: string;
   error?: string;
 };
 
-export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
+export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function Textarea(
   { label, error, id, className = '', ...rest },
   ref,
 ) {
@@ -17,10 +17,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
           {label}
         </label>
       )}
-      <input
+      <textarea
         ref={ref}
         id={id}
-        className={`border rounded px-3 py-2 text-sm focus:outline-none ${
+        className={`border rounded px-3 py-2 text-sm focus:outline-none min-h-[80px] ${
           error
             ? 'border-danger-500 focus:border-danger-600'
             : 'border-slate-300 focus:border-brand-500'
