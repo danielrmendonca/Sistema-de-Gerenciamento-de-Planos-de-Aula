@@ -4,7 +4,7 @@ Plataforma para cadastro, organização e consulta de planos de aula, com integr
 
 ## Stack
 - **Frontend:** TypeScript, Vite, React, Tailwind CSS v3, React Router, React Hook Form, Zod, TanStack Query, Axios.
-- **Backend:** JavaScript, Node.js, Express, Zod, Pino, Axios, pg (conexão com o banco).
+- **Backend:** JavaScript (CommonJS - `require`/`module.exports`), Node.js, Express, Zod, Pino, Axios, pg (conexão com o banco).
 - **Banco:** PostgreSQL.
 - **Testes:** Jest, Supertest.
 - **IA:** Google AI Studio (Gemini).
@@ -13,36 +13,85 @@ Plataforma para cadastro, organização e consulta de planos de aula, com integr
 
 ## Pré-requisitos
 - Node.js 20+ e npm 10+.
-- PostgreSQL 15+ acessível.
+- Docker (para subir o banco de dados PostgreSQL).
 - API Key do Google AI Studio (necessária para o recurso Smart Assist).
 
-## Setup
+## Como rodar em desenvolvimento
+
+### 1. Clonar e instalar dependências
 ```bash
 git clone https://github.com/danielrmendonca/Sistema-de-Gerenciamento-de-Planos-de-Aula.git
 cd Sistema-de-Gerenciamento-de-Planos-de-Aula
 
-cd backend
-npm install
-
-cd ../frontend
-npm install
+cd backend && npm install
+cd ../frontend && npm install
 cd ..
+```
 
+### 2. Configurar variáveis de ambiente
+```bash
 cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
 ```
+Abra `backend/.env` e preencha `GOOGLE_AI_API_KEY` com sua chave do Google AI Studio. As demais variáveis já estão com os valores padrão.
 
-## Rodando em desenvolvimento
-Dois terminais:
+### 3. Subir o banco de dados (Docker)
+O projeto usa um container Docker apenas para o PostgreSQL em desenvolvimento. Não é necessário instalar o PostgreSQL na máquina.
+
 ```bash
-# backend (porta 3000)
+docker run -d \
+  --name lesson-plans-db \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=lesson_plans \
+  -p 5432:5432 \
+  postgres:15-alpine
+```
+
+Aguarde alguns segundos e verifique se o banco subiu:
+```bash
+docker exec lesson-plans-db psql -U postgres -d lesson_plans -c "SELECT 1"
+# Deve retornar: ?column? = 1
+```
+
+### 4. Rodar a migration
+Cria a tabela `lesson_plans` no banco:
+```bash
+docker exec lesson-plans-db psql -U postgres -d lesson_plans \
+  -f /dev/stdin < backend/src/db/migrations/001_create_lesson_plans.sql
+```
+
+No Windows (PowerShell), use:
+```powershell
+Get-Content backend\src\db\migrations\001_create_lesson_plans.sql |
+  docker exec -i lesson-plans-db psql -U postgres -d lesson_plans
+```
+
+### 5. Iniciar a aplicação
+Abra dois terminais:
+```bash
+# Terminal 1 - backend (porta 3000)
 cd backend && npm run dev
 
-# frontend (porta 5173, com proxy /api -> :3000)
+# Terminal 2 - frontend (porta 5173)
 cd frontend && npm run dev
 ```
-- Front: http://localhost:5173
-- Health: http://localhost:3000/health
+
+Acesse:
+- Frontend: http://localhost:5173
+- Health check: http://localhost:3000/health
+
+### Sessoes seguintes
+O container do banco persiste os dados. Para as proximas vezes, basta iniciar o container e a aplicacao:
+```bash
+docker start lesson-plans-db
+
+# Terminal 1
+cd backend && npm run dev
+
+# Terminal 2
+cd frontend && npm run dev
+```
 
 
 ## Estrutura
@@ -122,6 +171,32 @@ cd frontend && npm run dev
 | PUT    | `/api/lesson-plans/:id`    | Atualiza um plano                        |
 | DELETE | `/api/lesson-plans/:id`    | Remove um plano                          |
 | POST   | `/api/ai/smart-assist`     | Gera recomendações via Gemini            |
+
+## Arquitetura do backend
+
+O backend segue uma arquitetura em camadas onde cada arquivo tem uma responsabilidade única. O fluxo de uma requisição passa por todas elas em sequência:
+
+```
+Requisição HTTP -> Rota -> Middleware (validate) -> Controller -> Service -> Repository -> Banco
+```
+
+**Rotas** (`src/routes/`)
+Conectam método HTTP + caminho a uma função do controller. Também encadeiam o middleware de validação antes do controller, garantindo que dados inválidos sejam rejeitados antes de qualquer lógica de negócio.
+
+```js
+router.get('/:id', validate({ params: idParamsSchema }), controller.getById);
+```
+
+**Controller** (`src/controllers/`)
+Recebe `req` e `res`, extrai os dados da requisição, delega ao service e devolve a resposta HTTP. Não conhece SQL e não aplica regras de negócio.
+
+**Service** (`src/services/`)
+Aplica as regras de negócio. Verifica, por exemplo, se um recurso existe antes de retorná-lo, lançando erro 404 quando o repositório devolve `null`. Não conhece `req` nem `res`.
+
+**Repository** (`src/repositories/`)
+Unica camada que fala com o banco. Executa as queries SQL e devolve objetos simples. Converte snake_case do PostgreSQL para camelCase antes de retornar.
+
+Essa separação permite testar cada camada de forma isolada - os testes de integração mockam apenas o repositório, sem precisar de um banco real.
 
 ## Integração Contínua (CI)
 Workflow do GitHub Actions em `.github/workflows/lint.yml` que roda ESLint e Prettier nos pacotes `backend` e `frontend` a cada `push` (qualquer branch) e em `pull_request` para `main`.
