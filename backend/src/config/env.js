@@ -22,9 +22,7 @@ const envSchema = z.object({
   GOOGLE_AI_TIMEOUT_MS: z.coerce.number().int().positive().default(15000),
 
   // ----------LOGS----------
-  LOG_LEVEL: z
-    .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
-    .default('info'),
+  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
 
   // ----------CORS----------
   CORS_ORIGIN: z.string().default('*'),

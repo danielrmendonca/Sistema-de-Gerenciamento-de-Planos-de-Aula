@@ -7,10 +7,7 @@ const HttpError = require('../utils/http-error');
 function errorHandler(err, req, res, _next) {
   // Erros HTTP conhecidos
   if (err instanceof HttpError) {
-    logger.warn(
-      { statusCode: err.statusCode, path: req.path, details: err.details },
-      err.message,
-    );
+    logger.warn({ statusCode: err.statusCode, path: req.path, details: err.details }, err.message);
     return res.status(err.statusCode).json({
       error: err.message,
       details: err.details,

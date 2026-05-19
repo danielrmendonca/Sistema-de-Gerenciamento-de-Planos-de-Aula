@@ -1,4 +1,4 @@
-//db.js Cria e exporta o pool de conexões com o PostgreSQL  
+//db.js Cria e exporta o pool de conexões com o PostgreSQL
 
 // ----------POOL DE CONEXOES POSTGRESQL----------
 const { Pool } = require('pg');
