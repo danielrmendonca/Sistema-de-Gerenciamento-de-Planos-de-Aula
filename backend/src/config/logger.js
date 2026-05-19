@@ -1,4 +1,4 @@
-// logger.js Configura e exporta a instância do Pino (logger estruturado) 
+// logger.js Configura e exporta a instância do Pino (logger estruturado)
 
 // ----------LOGGER ESTRUTURADO (PINO)----------
 const pino = require('pino');

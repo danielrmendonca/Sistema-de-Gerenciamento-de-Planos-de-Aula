@@ -123,6 +123,37 @@ cd frontend && npm run dev
 | DELETE | `/api/lesson-plans/:id`    | Remove um plano                          |
 | POST   | `/api/ai/smart-assist`     | Gera recomendações via Gemini            |
 
+## Integração Contínua (CI)
+Workflow do GitHub Actions em `.github/workflows/lint.yml` que roda ESLint e Prettier nos pacotes `backend` e `frontend` a cada `push` (qualquer branch) e em `pull_request` para `main`.
+
+### Como funciona
+- Dois jobs em paralelo via `matrix` (`backend` e `frontend`), com `fail-fast: false` para que a falha de um não cancele o outro.
+- Node 20 com cache do npm baseado no `package-lock.json` de cada pacote.
+- Em cada job: `npm ci`, `npm run lint` (ESLint) e `npm run format:check` (Prettier em modo verificação).
+
+### Como usar no dia a dia
+1. Antes de subir, rode local para evitar check vermelho:
+   ```bash
+   cd backend  && npm run lint && npm run format:check
+   cd ../frontend && npm run lint && npm run format:check
+   ```
+2. Se algo falhar, corrija com:
+   ```bash
+   npm run lint:fix     # erros auto-corrigíveis do ESLint
+   npm run format       # reformata com Prettier
+   ```
+3. Faça `git push`. Acompanhe o resultado em:
+   - Aba **Actions** do repositório.
+   - Bolinha de status (verde/vermelho) ao lado do commit.
+   - Bloco **Checks** no rodapé da PR.
+
+### Quando o pipeline dispara
+| Evento                                       | Dispara? |
+| -------------------------------------------- | -------- |
+| `push` em qualquer branch                    | Sim      |
+| Abertura, update ou reabertura de PR p/ main | Sim      |
+| Edição apenas de arquivos não rastreados     | Não      |
+
 ## Decisões arquiteturais
 - **Backend em camadas** (controller, service, repository) para separar HTTP, regras de negócio e acesso a banco.
 - **Zod nos dois lados** para validar entrada do back e do formulário do front com a mesma biblioteca.
