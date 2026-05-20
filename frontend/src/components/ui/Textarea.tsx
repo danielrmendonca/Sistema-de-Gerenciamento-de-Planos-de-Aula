@@ -1,8 +1,8 @@
 // ----------TEXTAREA BASE----------
-import { forwardRef, type TextareaHTMLAttributes } from 'react';
+import { forwardRef, type TextareaHTMLAttributes, type ReactNode } from 'react';
 
 type TextareaProps = TextareaHTMLAttributes<HTMLTextAreaElement> & {
-  label?: string;
+  label?: ReactNode;
   error?: string;
 };
 

@@ -16,6 +16,16 @@ import { Spinner } from '../components/ui/Spinner';
 import { TagInput } from '../components/ui/TagInput';
 import { Textarea } from '../components/ui/Textarea';
 
+// Marca visualmente um label de campo obrigatorio com asterisco vermelho.
+// O `required` real e garantido pelo schema Zod, isso e apenas a pista visual para o usuario
+function RequiredLabel({ children }: { children: string }) {
+  return (
+    <>
+      {children} <span className="text-danger-500">*</span>
+    </>
+  );
+}
+
 // Valores iniciais usados no modo criacao. No modo edicao sao substituidos via reset() quando a query carrega
 const emptyValues: LessonPlanFormData = {
   title: '',
@@ -169,7 +179,7 @@ export function LessonPlanFormPage() {
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
         <Input
           id="title"
-          label="Titulo da aula"
+          label={<RequiredLabel>Titulo da aula</RequiredLabel>}
           placeholder="Ex: Introducao ao OSPF"
           error={errors.title?.message}
           {...register('title')}
@@ -178,7 +188,7 @@ export function LessonPlanFormPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input
             id="discipline"
-            label="Disciplina"
+            label={<RequiredLabel>Disciplina</RequiredLabel>}
             placeholder="Ex: Redes"
             error={errors.discipline?.message}
             {...register('discipline')}
@@ -186,7 +196,7 @@ export function LessonPlanFormPage() {
           <Input
             id="scheduledDate"
             type="date"
-            label="Data prevista"
+            label={<RequiredLabel>Data prevista</RequiredLabel>}
             error={errors.scheduledDate?.message}
             {...register('scheduledDate')}
           />
@@ -194,7 +204,7 @@ export function LessonPlanFormPage() {
 
         <Textarea
           id="objective"
-          label="Objetivo"
+          label={<RequiredLabel>Objetivo</RequiredLabel>}
           placeholder="O que o aluno deve ser capaz de fazer ao fim da aula"
           error={errors.objective?.message}
           {...register('objective')}
@@ -202,7 +212,7 @@ export function LessonPlanFormPage() {
 
         <Textarea
           id="summary"
-          label="Ementa / resumo"
+          label={<RequiredLabel>Ementa / resumo</RequiredLabel>}
           placeholder="Resumo dos topicos abordados"
           error={errors.summary?.message}
           {...register('summary')}
