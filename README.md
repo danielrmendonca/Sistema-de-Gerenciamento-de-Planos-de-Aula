@@ -12,119 +12,82 @@ Plataforma para cadastro, organização e consulta de planos de aula, com integr
 - **Infra:** Docker, Nginx.
 
 ## Pré-requisitos
-- Node.js 20+ e npm 10+.
-- Docker (para subir o banco de dados PostgreSQL).
-- API Key do Google AI Studio (necessária para o recurso Smart Assist).
+- Docker e Docker Compose.
+- API Key do Google AI Studio (necessária para o recurso Smart Assist). Obtenha em https://aistudio.google.com/apikey.
 
-## Como rodar em desenvolvimento
+> Para desenvolver com hot reload (HMR) em vez de rodar tudo containerizado, veja [dev_setup_local.md](./dev_setup_local.md).
 
-### 1. Clonar e instalar dependências
+## Como rodar
+
+Sobe banco, backend, frontend (build) e proxy Nginx em quatro containers com um único comando. Tudo passa pela porta 80 do host.
+
+### 1. Clonar e configurar a chave da IA
 ```bash
 git clone https://github.com/danielrmendonca/Sistema-de-Gerenciamento-de-Planos-de-Aula.git
 cd Sistema-de-Gerenciamento-de-Planos-de-Aula
 
-cd backend && npm install
-cd ../frontend && npm install
-cd ..
-```
-
-### 2. Configurar variáveis de ambiente
-```bash
 cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
 ```
-Abra `backend/.env` e preencha `GOOGLE_AI_API_KEY` com sua chave do Google AI Studio. As demais variáveis já estão com os valores padrão.
+Abra `backend/.env` e preencha `ADICIONE_SUA_CHAVE_AQUI` com sua chave. As outras variáveis já estão com defaults adequados; o `docker-compose.yml` sobrescreve `DB_HOST`, `CORS_ORIGIN` e `NODE_ENV` para o ambiente containerizado.
 
-### 3. Subir o banco de dados (Docker)
-O projeto usa um container Docker apenas para o PostgreSQL em desenvolvimento. Não é necessário instalar o PostgreSQL na máquina.
-
+### 2. Subir tudo
 ```bash
-docker run -d \
-  --name lesson-plans-db \
-  -e POSTGRES_USER=postgres \
-  -e POSTGRES_PASSWORD=postgres \
-  -e POSTGRES_DB=lesson_plans \
-  -p 5432:5432 \
-  postgres:15-alpine
+docker compose up --build -d
 ```
 
-Aguarde alguns segundos e verifique se o banco subiu:
+Na primeira vez o build leva 1-2 minutos. A migration `001_create_lesson_plans.sql` roda automaticamente na inicialização do banco (volume vazio).
+
+### 3. Acessar
+- Aplicação: http://localhost/
+- Health check: http://localhost/health
+- API: http://localhost/api/lesson-plans
+
+### Comandos úteis
 ```bash
-docker exec lesson-plans-db psql -U postgres -d lesson_plans -c "SELECT 1"
-# Deve retornar: ?column? = 1
+docker compose ps              # status dos containers
+docker compose logs -f backend # logs de um servico especifico
+docker compose down            # para tudo (mantem o volume do banco)
+docker compose down -v         # para tudo E apaga o volume do banco
+docker compose up --build -d   # rebuilda imagens e sobe novamente
 ```
-
-### 4. Rodar a migration
-Cria a tabela `lesson_plans` no banco:
-```bash
-docker exec lesson-plans-db psql -U postgres -d lesson_plans \
-  -f /dev/stdin < backend/src/db/migrations/001_create_lesson_plans.sql
-```
-
-No Windows (PowerShell), use:
-```powershell
-Get-Content backend\src\db\migrations\001_create_lesson_plans.sql |
-  docker exec -i lesson-plans-db psql -U postgres -d lesson_plans
-```
-
-### 5. Iniciar a aplicação
-Abra dois terminais:
-```bash
-# Terminal 1 - backend (porta 3000)
-cd backend && npm run dev
-
-# Terminal 2 - frontend (porta 5173)
-cd frontend && npm run dev
-```
-
-Acesse:
-- Frontend: http://localhost:5173
-- Health check: http://localhost:3000/health
-
-### Sessoes seguintes
-O container do banco persiste os dados. Para as proximas vezes, basta iniciar o container e a aplicacao:
-```bash
-docker start lesson-plans-db
-
-# Terminal 1
-cd backend && npm run dev
-
-# Terminal 2
-cd frontend && npm run dev
-```
-
 
 ## Estrutura
 ```
 .
+├── docker-compose.yml       orquestra db + backend + frontend + proxy
+│
 ├── backend/                 API Node.js + Express
 │   ├── src/
 │   │   ├── config/          env (Zod), db (pg), logger (Pino)
 │   │   ├── controllers/     camada HTTP
-│   │   ├── services/        regras de negócio
+│   │   ├── services/        regras de negócio (inclui ai.service.js)
 │   │   ├── repositories/    acesso a banco
 │   │   ├── routes/          rotas Express
 │   │   ├── validators/      schemas Zod de entrada
 │   │   ├── middlewares/     validate, error-handler, request-logger
 │   │   ├── utils/           http-error
-│   │   ├── db/migrations/   SQLs de migração
+│   │   ├── db/migrations/   SQLs de migração (rodam no init do Postgres)
 │   │   ├── app.js           configuração do Express
 │   │   └── index.js         bootstrap
 │   ├── tests/               Jest + Supertest
-│   ├── nginx/               Configurações de Proxy
+│   ├── nginx/default.conf   configuração do proxy reverso (servido pelo container proxy)
+│   ├── Dockerfile           imagem de produção do backend
 │   └── .env.example
 │
 └── frontend/                SPA Vite + React + TS + Tailwind
     ├── src/
     │   ├── api/             cliente Axios e endpoints
-    │   ├── components/      ui, layout, feature
+    │   ├── components/      ui (Button, Input, Select, Textarea, TagInput, Spinner), layout
     │   ├── pages/           listagem, formulário, 404
+    │   ├── hooks/           useDebouncedValue
     │   ├── schemas/         schemas Zod do formulário
     │   ├── types/           tipos de domínio
     │   ├── lib/             query-client
     │   ├── router.tsx       rotas
     │   ├── App.tsx          providers
     │   └── main.tsx         entry point
+    ├── nginx.conf           configuração do nginx interno do frontend (SPA + try_files)
+    ├── Dockerfile           multi-stage: build Vite + servir estático no nginx
     └── .env.example
 ```
 
@@ -151,7 +114,7 @@ cd frontend && npm run dev
 | `DB_USER`               | `postgres`         |
 | `DB_PASSWORD`           |                    |
 | `GOOGLE_AI_API_KEY`     |                    |
-| `GOOGLE_AI_MODEL`       | `gemini-1.5-flash` |
+| `GOOGLE_AI_MODEL`       | `gemini-3.1-flash-lite` |
 | `GOOGLE_AI_TIMEOUT_MS`  | `15000`            |
 | `LOG_LEVEL`             | `info`             |
 | `CORS_ORIGIN`           | `*`                |
@@ -198,6 +161,34 @@ Unica camada que fala com o banco. Executa as queries SQL e devolve objetos simp
 
 Essa separação permite testar cada camada de forma isolada - os testes de integração mockam apenas o repositório, sem precisar de um banco real.
 
+## Infraestrutura (Docker Compose)
+
+Quatro serviços no `docker-compose.yml`, todos na mesma rede interna criada pelo Compose, com apenas o proxy expondo porta ao host:
+
+```
+Navegador --> http://localhost (porta 80)
+                    |
+                    v
+              [proxy: nginx]   <- unica porta exposta
+              /            \
+             /              \
+       / e /*           /api/*, /health
+            |                |
+            v                v
+     [frontend: nginx]   [backend: node]
+     (SPA estatica)           |
+                              v
+                         [db: postgres]
+                         (volume persistente)
+```
+
+- **db**: `postgres:15-alpine` com healthcheck via `pg_isready`. O backend só sobe depois que o banco está pronto. A migration é montada em `/docker-entrypoint-initdb.d` e roda automaticamente no primeiro init.
+- **backend**: build a partir de `backend/Dockerfile` (Node 20 alpine, `npm ci --omit=dev`). Lê as variáveis de `backend/.env`, mas o Compose sobrescreve `DB_HOST=db` e `CORS_ORIGIN=http://localhost`.
+- **frontend**: multi-stage. O primeiro stage builda o SPA com Vite; o segundo copia o `dist` para `nginx:alpine` com `try_files $uri $uri/ /index.html` (para rotas client-side do React Router não darem 404 ao recarregar).
+- **proxy**: `nginx:alpine` com config montada de `backend/nginx/default.conf`. Roteia `/api/*` e `/health` para `backend:3000` e qualquer outra rota para `frontend:80`.
+
+Como tudo passa pela mesma origem (`http://localhost`), CORS deixa de ser problema em produção - o navegador nunca faz requisição cross-origin para o backend.
+
 ## Integração Contínua (CI)
 Workflow do GitHub Actions em `.github/workflows/lint.yml` que roda ESLint e Prettier nos pacotes `backend` e `frontend` a cada `push` (qualquer branch) e em `pull_request` para `main`.
 
@@ -236,3 +227,4 @@ Workflow do GitHub Actions em `.github/workflows/lint.yml` que roda ESLint e Pre
 - **Proxy do Vite** `/api` para o backend em dev, evitando configuração específica de CORS.
 - **TanStack Query** no front para cache, loading e erros de forma declarativa.
 - **Persona Prompting e Output Formatting** no Smart Assist: a IA atua como "Assistente Pedagógico" e responde em JSON estruturado.
+- **Docker Compose com proxy reverso** unindo banco, API, SPA e proxy em uma única rede interna; só o proxy expõe porta ao host, eliminando CORS em produção e simulando um deploy real.
