@@ -2,6 +2,8 @@
 
 Plataforma para cadastro, organização e consulta de planos de aula, com integração de IA para recomendar conteúdos complementares.
 
+> Vídeo de apresentação (até 5 min): _(adicionar link após gravação)_
+
 ## Stack
 - **Frontend:** TypeScript, Vite, React, Tailwind CSS v3, React Router, React Hook Form, Zod, TanStack Query, Axios.
 - **Backend:** JavaScript (CommonJS - `require`/`module.exports`), Node.js, Express, Zod, Pino, Axios, pg (conexão com o banco).
@@ -15,7 +17,7 @@ Plataforma para cadastro, organização e consulta de planos de aula, com integr
 - Docker e Docker Compose.
 - API Key do Google AI Studio (necessária para o recurso Smart Assist). Obtenha em https://aistudio.google.com/apikey.
 
-> Para desenvolver com hot reload (HMR) em vez de rodar tudo containerizado, veja [dev_setup_local.md](./dev_setup_local.md).
+> Para desenvolver com hot reload (HMR) em vez de rodar tudo containerizado, veja [DEV_SETUP_LOCAL.md](./DEV_SETUP_LOCAL.md).
 
 ## Como rodar
 
@@ -112,12 +114,12 @@ docker compose up --build -d   # rebuilda imagens e sobe novamente
 | `DB_PORT`               | `5432`             |
 | `DB_NAME`               | `lesson_plans`     |
 | `DB_USER`               | `postgres`         |
-| `DB_PASSWORD`           |                    |
-| `GOOGLE_AI_API_KEY`     |                    |
+| `DB_PASSWORD`           | `postgres`         |
+| `GOOGLE_AI_API_KEY`     | `ADICIONE_SUA_CHAVE_AQUI` |
 | `GOOGLE_AI_MODEL`       | `gemini-3.1-flash-lite` |
 | `GOOGLE_AI_TIMEOUT_MS`  | `15000`            |
 | `LOG_LEVEL`             | `info`             |
-| `CORS_ORIGIN`           | `*`                |
+| `CORS_ORIGIN`           | `http://localhost:5173` |
 
 ### frontend/.env
 | Variável        | Default |
@@ -228,3 +230,38 @@ Workflow do GitHub Actions em `.github/workflows/lint.yml` que roda ESLint e Pre
 - **TanStack Query** no front para cache, loading e erros de forma declarativa.
 - **Persona Prompting e Output Formatting** no Smart Assist: a IA atua como "Assistente Pedagógico" e responde em JSON estruturado.
 - **Docker Compose com proxy reverso** unindo banco, API, SPA e proxy em uma única rede interna; só o proxy expõe porta ao host, eliminando CORS em produção e simulando um deploy real.
+
+## Diferenciais e itens bônus implementados
+
+Itens além dos requisitos funcionais básicos do case. Cada um está descrito aqui ou demonstrado no vídeo de apresentação (link no topo do README após gravação).
+
+### Observabilidade
+- **Logger estruturado Pino** com o formato exato sugerido pelo case: `AI Request: Title="...", Discipline="...", TokenUsage=180, Latency=1.4s`.
+- **Endpoint `/health`** que valida não só o processo Node mas também a conexão com o Postgres (`dependencies.database: up`).
+- **Request logger middleware** em todas as requisições (latência, status, método, rota).
+
+### DevOps
+- **CI no GitHub Actions** (`.github/workflows/lint.yml`) com matrix paralelo (backend e frontend independentes, `fail-fast: false`), cache do npm baseado em `package-lock.json`, ESLint + Prettier em modo verificação.
+- **Containerização completa**: 4 serviços (`db`, `backend`, `frontend`, `proxy`), só o proxy expõe porta ao host, CORS eliminado em produção. Subir com `docker compose up --build`.
+- **Build multi-stage do frontend**: stage Node compila o SPA, stage Nginx alpine serve só o `dist` final. Imagem de produção sem Node nem `node_modules`.
+- **Healthcheck no Postgres** com `depends_on: condition: service_healthy` no backend, evitando race condition na subida.
+- **Migration automática no init do banco** via mount em `/docker-entrypoint-initdb.d`.
+
+### Backend
+- **Arquitetura em camadas** (controller/service/repository) com responsabilidades isoladas: controller só conhece HTTP, service só conhece regras de negócio, repository só conhece SQL.
+- **Testes de integração com mock só do repositório** - cada camada testada isoladamente sem precisar de banco real.
+- **Validação centralizada via middleware Zod** aplicado nas rotas antes do controller, rejeitando dados inválidos antes de qualquer regra de negócio.
+- **Conversão snake_case ↔ camelCase** centralizada no repository, isolando a app das convenções do PostgreSQL.
+
+### Frontend
+- **TagInput customizado** com chips, remoção por X, Enter/vírgula para adicionar, Backspace remove o último - feito do zero, sem biblioteca.
+- **useDebouncedValue (400ms)** na busca textual da listagem para evitar uma requisição por tecla pressionada.
+- **TanStack Query com `placeholderData`** mantém os dados anteriores enquanto paginamos, evitando flicker entre páginas.
+- **`useWatch` ao invés de `watch`** do react-hook-form para ficar compatível com o React Compiler.
+- **try_files no nginx do frontend** para rotas client-side do React Router não darem 404 ao recarregar (ex: `/planos/5/editar` refresh).
+- **Smart Assist com merge sem duplicar**: a IA pode rodar várias vezes sem sobrescrever o que o usuário já digitou (usa `Set` para deduplicar).
+
+### Processo
+- **Histórico de Git limpo**: 7 PRs sequenciais, cada um com commits pequenos e prefixos consistentes (`feat:`, `fix:`, `chore:`, `docs:`, `test:`, `ci:`).
+- **`.gitattributes` forçando eol=lf** resolveu problemas de CRLF do Windows com Prettier.
+- **Setup dev local separado** (`dev_setup_local.md`) para iteração rápida sem rebuildar containers a cada mudança.
