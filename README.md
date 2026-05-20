@@ -2,7 +2,7 @@
 
 Plataforma para cadastro, organização e consulta de planos de aula, com integração de IA para recomendar conteúdos complementares.
 
-> Vídeo de apresentação (até 5 min): _(adicionar link após gravação)_
+> Vídeo de apresentação (até 5 min): https://drive.google.com/drive/folders/1rAMmaMvWemcIbAflXaXIpRncxMivmS9y?usp=sharing
 
 ## Stack
 - **Frontend:** TypeScript, Vite, React, Tailwind CSS v3, React Router, React Hook Form, Zod, TanStack Query, Axios.
