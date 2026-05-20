@@ -4,10 +4,11 @@
 // mode 'onChange' valida em tempo real conforme o usuario digita
 import { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Controller, useForm } from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createLessonPlan, getLessonPlan, updateLessonPlan } from '../api/lesson-plans';
+import { generateSmartAssist } from '../api/ai';
 import { lessonPlanFormSchema, type LessonPlanFormData } from '../schemas/lesson-plan.schema';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -56,6 +57,8 @@ export function LessonPlanFormPage() {
     handleSubmit,
     control,
     reset,
+    getValues,
+    setValue,
     formState: { errors, isSubmitting, isValid },
   } = useForm<LessonPlanFormData>({
     resolver: zodResolver(lessonPlanFormSchema),
@@ -103,6 +106,44 @@ export function LessonPlanFormPage() {
     } else {
       createMutation.mutate(values);
     }
+  }
+
+  // ----------SMART ASSIST----------
+  // useWatch e a versao "hook" do watch e e compativel com o React Compiler.
+  // Passar um array de nomes faz uma unica subscricao e devolve os valores na mesma ordem
+  const [titleValue, disciplineValue, summaryValue] = useWatch({
+    control,
+    name: ['title', 'discipline', 'summary'],
+  });
+
+  // A IA precisa dos tres campos preenchidos para gerar recomendacoes uteis,
+  // entao desabilitamos o botao ate que estejam todos com conteudo nao vazio
+  const canUseSmartAssist = Boolean(
+    titleValue?.trim() && disciplineValue?.trim() && summaryValue?.trim(),
+  );
+
+  const smartAssistMutation = useMutation({
+    mutationFn: generateSmartAssist,
+    onSuccess: (response) => {
+      // Mescla sugestoes da IA com o que o usuario ja tinha digitado, sem duplicar.
+      // Set elimina duplicatas e o spread reconverte para array preservando ordem de insercao.
+      // contents e extraTopics da IA vao juntos no campo Conteudos porque ambos sao tematicos
+      const mergedContents = Array.from(
+        new Set([...getValues('contents'), ...response.contents, ...response.extraTopics]),
+      );
+      const mergedTags = Array.from(new Set([...getValues('tags'), ...response.tags]));
+      // shouldValidate revalida apos a alteracao, shouldDirty marca o form como modificado
+      setValue('contents', mergedContents, { shouldValidate: true, shouldDirty: true });
+      setValue('tags', mergedTags, { shouldValidate: true, shouldDirty: true });
+    },
+  });
+
+  function handleSmartAssist() {
+    smartAssistMutation.mutate({
+      title: titleValue,
+      discipline: disciplineValue,
+      summary: summaryValue,
+    });
   }
 
   // ----------ESTADOS DE CARGA E ERRO DA MUTATION----------
@@ -166,6 +207,52 @@ export function LessonPlanFormPage() {
           error={errors.summary?.message}
           {...register('summary')}
         />
+
+        {/* ----------SMART ASSIST (IA)----------
+            Usa titulo, disciplina e ementa para sugerir conteudos extras e tags.
+            O painel fica acima dos campos que serao preenchidos para que o usuario
+            veja imediatamente o efeito da acao */}
+        <div className="border border-brand-200 bg-brand-50 rounded p-4 flex flex-col gap-2">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex flex-col">
+              <span className="text-sm font-medium text-brand-700">Smart Assist</span>
+              <span className="text-xs text-slate-600">
+                Sugere conteudos e tags com base em titulo, disciplina e ementa.
+              </span>
+            </div>
+            <Button
+              type="button"
+              onClick={handleSmartAssist}
+              disabled={!canUseSmartAssist || smartAssistMutation.isPending}
+              aria-busy={smartAssistMutation.isPending}
+            >
+              {smartAssistMutation.isPending ? 'Gerando...' : 'Gerar Recomendacoes com IA'}
+            </Button>
+          </div>
+          {!canUseSmartAssist && (
+            <span className="text-xs text-slate-500">
+              Preencha titulo, disciplina e ementa para habilitar.
+            </span>
+          )}
+          {smartAssistMutation.isPending && (
+            <div className="pt-1">
+              <Spinner size="sm" label="Consultando a IA..." />
+            </div>
+          )}
+          {smartAssistMutation.isError && (
+            <span className="text-xs text-danger-600">
+              Falha:{' '}
+              {smartAssistMutation.error instanceof Error
+                ? smartAssistMutation.error.message
+                : 'Erro desconhecido'}
+            </span>
+          )}
+          {smartAssistMutation.isSuccess && !smartAssistMutation.isPending && (
+            <span className="text-xs text-brand-700">
+              Recomendacoes adicionadas em Conteudos e Tags.
+            </span>
+          )}
+        </div>
 
         {/* Controller e necessario para campos sem ref nativa do react-hook-form,
             no caso o TagInput que e um componente customizado controlado por value/onChange */}
