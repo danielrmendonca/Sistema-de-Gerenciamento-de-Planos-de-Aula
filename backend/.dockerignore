@@ -1,0 +1,17 @@
+# ----------ARQUIVOS QUE NAO ENTRAM NA IMAGEM DO BACKEND----------
+# Excluir reduz o tamanho da imagem e o tempo de build, alem de evitar vazar segredos
+node_modules
+npm-debug.log
+.env
+.env.local
+.git
+.gitignore
+coverage
+tests
+*.md
+.eslintrc*
+eslint.config.js
+.prettierrc
+nodemon.json
+Dockerfile
+.dockerignore
