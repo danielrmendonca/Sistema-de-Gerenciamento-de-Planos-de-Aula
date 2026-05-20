@@ -1,10 +1,10 @@
 // ----------SELECT BASE----------
-import { forwardRef, type SelectHTMLAttributes } from 'react';
+import { forwardRef, type SelectHTMLAttributes, type ReactNode } from 'react';
 
 type Option = { value: string; label: string };
 
 type SelectProps = SelectHTMLAttributes<HTMLSelectElement> & {
-  label?: string;
+  label?: ReactNode;
   error?: string;
   options: Option[];
 };

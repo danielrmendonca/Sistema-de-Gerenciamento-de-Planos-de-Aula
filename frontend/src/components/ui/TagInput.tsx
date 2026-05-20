@@ -1,11 +1,11 @@
 // ----------TAG INPUT----------
 // Campo controlado para arrays de strings. Cada item vira um chip com botao de remocao.
 // Adiciona um novo item ao pressionar Enter ou virgula, evita duplicados e itens vazios
-import { useState, type KeyboardEvent } from 'react';
+import { useState, type KeyboardEvent, type ReactNode } from 'react';
 
 type TagInputProps = {
   id?: string;
-  label?: string;
+  label?: ReactNode;
   value: string[];
   onChange: (next: string[]) => void;
   placeholder?: string;
