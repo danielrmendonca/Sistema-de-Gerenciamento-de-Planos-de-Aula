@@ -1,0 +1,13 @@
+# ----------ARQUIVOS QUE NAO ENTRAM NA IMAGEM DO FRONTEND----------
+node_modules
+dist
+.env
+.env.local
+.git
+.gitignore
+*.md
+.eslintrc*
+eslint.config.js
+.prettierrc
+Dockerfile
+.dockerignore

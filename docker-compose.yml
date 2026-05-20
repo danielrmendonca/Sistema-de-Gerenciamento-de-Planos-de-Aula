@@ -1,0 +1,74 @@
+# ----------AMBIENTE COMPLETO----------
+# 4 servicos: db (Postgres), backend (Node/Express), frontend (Vite build + nginx),
+# proxy (nginx que expoe a unica porta publica e roteia /api e /health para o backend).
+# Sobe tudo com: docker compose up --build
+
+services:
+  # ----------BANCO----------
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: lesson_plans
+    volumes:
+      # Persistencia dos dados entre restarts em volume nomeado gerenciado pelo Docker
+      - db_data:/var/lib/postgresql/data
+      # Migrations rodam automaticamente na primeira inicializacao do banco (volume vazio).
+      # Em init subsequentes o postgres ignora esta pasta
+      - ./backend/src/db/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      # pg_isready confirma que o banco aceita conexoes - usado pelo depends_on do backend
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d lesson_plans']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ----------BACKEND----------
+  backend:
+    build: ./backend
+    env_file:
+      # Carrega GOOGLE_AI_API_KEY e demais variaveis do .env do desenvolvedor.
+      # As variaveis abaixo em 'environment' sobrescrevem o que vier do env_file
+      - ./backend/.env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      # DB_HOST aponta para o nome do servico no compose, nao localhost
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: lesson_plans
+      # Como tudo passa pelo proxy na mesma origem, o backend so precisa permitir a origem do proxy.
+      # Ajuste se for expor o proxy em outro host ou porta
+      CORS_ORIGIN: http://localhost
+    depends_on:
+      db:
+        # Espera o healthcheck do banco passar antes de subir o backend.
+        # Sem isso o backend pode tentar conectar antes do postgres aceitar conexoes
+        condition: service_healthy
+
+  # ----------FRONTEND----------
+  # Builda o SPA com Vite e serve o resultado estatico em nginx interno na porta 80.
+  # Nao expoe porta para a maquina hospedeira - quem fala com ele e o proxy
+  frontend:
+    build: ./frontend
+
+  # ----------PROXY REVERSO----------
+  # Unica porta exposta para a maquina hospedeira.
+  # Roteia /api e /health para o backend e qualquer outra rota para o frontend
+  proxy:
+    image: nginx:alpine
+    ports:
+      - '80:80'
+    volumes:
+      - ./backend/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - backend
+      - frontend
+
+# ----------VOLUMES----------
+# Volume nomeado para persistir os dados do postgres entre restarts do compose
+volumes:
+  db_data:
