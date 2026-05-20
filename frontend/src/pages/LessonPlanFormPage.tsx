@@ -59,7 +59,7 @@ export function LessonPlanFormPage() {
     reset,
     getValues,
     setValue,
-    formState: { errors, isSubmitting, isValid },
+    formState: { errors, isSubmitting },
   } = useForm<LessonPlanFormData>({
     resolver: zodResolver(lessonPlanFormSchema),
     mode: 'onChange', // valida a cada alteracao para feedback em tempo real
@@ -312,7 +312,9 @@ export function LessonPlanFormPage() {
           <Button type="button" variant="secondary" onClick={() => navigate('/')}>
             Cancelar
           </Button>
-          <Button type="submit" disabled={isSubmittingMutation || !isValid}>
+          {/* Nao bloqueamos pelo isValid porque o handleSubmit ja valida no clique
+              e mostra os erros abaixo de cada campo - assim o usuario ve o que falta */}
+          <Button type="submit" disabled={isSubmittingMutation}>
             {isSubmittingMutation ? 'Salvando...' : isEditing ? 'Salvar alteracoes' : 'Criar plano'}
           </Button>
         </div>
